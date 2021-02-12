@@ -225,7 +225,7 @@ class Seeder(object):
             klass = order["klass"]
             entity = order["entity"]
 
-            logging.debug("Creating {} of {}".format(number, klass))
+            print("Creating {} of {}".format(number, klass))
 
             if klass not in inserted_entities:
                 inserted_entities[klass] = []
