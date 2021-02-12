@@ -76,8 +76,8 @@ class FieldTypeGuesser(object):
 
         if isinstance(field, BooleanField): return lambda x: faker.boolean()
         if isinstance(field, NullBooleanField): return lambda x: faker.null_boolean()
-        if isinstance(field, PositiveTinyIntegerField): return lambda x: provider.rand_tiny_int(pos=True)
-        if isinstance(field, TinyIntegerField): return lambda x: provider.rand_tiny_int()
+        if field.get_internal_type() == 'PositiveTinyIntegerField': return lambda x: provider.rand_tiny_int(pos=True)
+        if field.get_internal_type() == 'TinyIntegerField': return lambda x: provider.rand_tiny_int()
         if isinstance(field, PositiveSmallIntegerField): return lambda x: provider.rand_small_int(pos=True)
         if isinstance(field, SmallIntegerField): return lambda x: provider.rand_small_int()
         if isinstance(field, BigIntegerField): return lambda x: provider.rand_big_int()
