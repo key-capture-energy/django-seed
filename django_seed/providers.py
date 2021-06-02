@@ -27,9 +27,7 @@ class Provider(object):
         return uuid.uuid4()
 
     def rand_tiny_int(self, pos=False):
-        if pos:
-            return random.randint(0, 255)
-        return random.randint(-128, 127)
+        return random.randint(0, 255)
 
     def rand_small_int(self, pos=False):
         if pos:
