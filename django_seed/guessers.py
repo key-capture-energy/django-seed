@@ -71,6 +71,19 @@ class FieldTypeGuesser(object):
         faker = self.faker
         provider = self.provider
 
+        if field.choices:
+            collected_choices = []
+            for choice in field.choices:
+                # Check if we have choices that are in named groups
+                # https://docs.djangoproject.com/en/3.2/ref/models/fields/#choices
+                if type(choice[1]) != str:
+                    for named_choice in choice[1]:
+                        collected_choices.append(named_choice)
+                else:
+                    collected_choices.append(choice)
+
+            return lambda x: random.choice(collected_choices)[0]
+
         if isinstance(field, DurationField): return lambda x: provider.duration()
         if isinstance(field, UUIDField): return lambda x: provider.uuid()
 
@@ -87,7 +100,7 @@ class FieldTypeGuesser(object):
         if isinstance(field, DecimalField): return lambda x: random.random()
 
         if isinstance(field, URLField): return lambda x: faker.uri()
-        if isinstance(field, SlugField): return lambda x: faker.uri_page()
+        if isinstance(field, SlugField): return lambda x: faker.slug()
         if isinstance(field, IPAddressField) or isinstance(field, GenericIPAddressField):
             protocol = random.choice(['ipv4', 'ipv6'])
             return lambda x: getattr(faker, protocol)()
@@ -102,8 +115,6 @@ class FieldTypeGuesser(object):
         if isinstance(field, FileField): return lambda x: provider.file_name()
 
         if isinstance(field, CharField):
-            if field.choices:
-                return lambda x: random.choice(field.choices)[0]
             return lambda x: faker.text(field.max_length) if field.max_length >= 5 else faker.word()
         if isinstance(field, TextField): return lambda x: faker.text()
 

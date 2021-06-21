@@ -1,29 +1,29 @@
 import random
-
 from contextlib import contextmanager
 from datetime import datetime
 
+from alphabet_detector import AlphabetDetector
 from django import VERSION as django_version
 from django.conf import settings
+from django.contrib.postgres.fields import ArrayField
 from django.core.management import call_command
 from django.core.validators import validate_comma_separated_integer_list
 from django.db import models
+from django.db.utils import IntegrityError
 from django.utils import timezone
-from django.contrib.postgres.fields import ArrayField
-
-from django_seed.guessers import NameGuesser, FieldTypeGuesser
-from django_seed.seeder import Seeder
-from django_seed.exceptions import SeederException, SeederCommandError
-from django_seed import Seed
-
 from faker import Faker
-from alphabet_detector import AlphabetDetector
 from jsonfield import JSONField
+
+from django_seed import Seed
+from django_seed.exceptions import SeederCommandError, SeederException
+from django_seed.guessers import FieldTypeGuesser, NameGuesser
+from django_seed.seeder import Seeder
 
 try:
     from django.utils.unittest import TestCase
 except:
     from django.test import TestCase
+
 from unittest import skipIf
 
 fake = Faker()
@@ -187,6 +187,7 @@ class FieldTypeGuesserTestCase(TestCase):
     @skipIf(django_version[0] < 2, "JSONField does not work with Django 1.11")
     def test_guess_not_in_format(self):
         from django.contrib.postgres.fields.jsonb import JSONField
+
         # postgres native JSONField has the _default_hint
         generator = self.instance.guess_format(JSONField())
         self.assertEquals(generator({}), '{}')
@@ -555,3 +556,99 @@ class EdgeCaseFieldTestCase(TestCase):
         seeder.add_entity(NotCoveredFields, 1)
 
         seeder.execute()
+
+class Animal(models.Model):
+    SPECIES_CHOICES = [
+        ('DG', 'Dog'),
+        ('CT', 'Cat'),
+        ('EL', 'Elephant'),
+    ]
+
+    species = models.CharField(
+        max_length = 2,
+        choices = SPECIES_CHOICES
+    )
+
+    COLOR_CHOICES = [
+        (1, 'Black'),
+        (2, 'White'),
+        (3, 'Brown'),
+    ]
+
+    first_color = models.SmallIntegerField(
+        choices = COLOR_CHOICES, unique=True
+    )
+
+    second_color = models.BigIntegerField(
+        choices = COLOR_CHOICES
+    )
+
+    FARM_CHOICES = [
+        (
+            "Alansburg",
+            (
+                (1, "Ruby's farm"),
+                (2, "Ben's farm"),
+            ),
+        ),
+        (
+            "Cornwall",
+            (
+                (3, "Becky's farm"),
+                (4, "Tom's farm"),
+            ),
+        ),
+        (5, "Internet farm")
+    ]
+
+    farm = models.IntegerField(
+        choices = FARM_CHOICES
+    )
+
+class Choices(TestCase):
+    def test_fields(self):
+        faker = fake
+        seeder = Seeder(faker)
+
+        seeder.add_entity(Animal, 1)
+
+        result = seeder.execute()
+
+        animal_object = Animal.objects.get(id=result[Animal][0])
+
+        self.assertTrue(animal_object.species in [x[0] for x in Animal.SPECIES_CHOICES])
+        self.assertTrue(animal_object.first_color in [x[0] for x in Animal.COLOR_CHOICES])
+        self.assertTrue(animal_object.second_color in [x[0] for x in Animal.COLOR_CHOICES])
+        self.assertTrue(animal_object.farm <= 5)
+
+class UniquenessTestCase(TestCase):
+    def test_pigeon_hole_principle(self):
+        faker = fake
+        seeder = Seeder(faker)
+
+        seeder.add_entity(Animal, 8)
+
+        result = seeder.execute()
+
+    def test_impossible_uniqueness(self):
+        faker = fake
+        seeder = Seeder(faker)
+
+        seeder.add_entity(Animal, 1, {
+            "first_color": 1
+        })
+
+        seeder.add_entity(Animal, 1, {
+            "first_color": 2
+        })
+
+        seeder.add_entity(Animal, 1, {
+            "first_color": 3
+        })
+
+        result = seeder.execute()
+
+        # This fourth animal cannot have a unique first color
+        seeder.add_entity(Animal, 1)
+
+        self.assertRaises(IntegrityError, seeder.execute)
